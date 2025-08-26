@@ -1,0 +1,7 @@
+guest_book.form:
+  path: '/guest-book'
+  defaults:
+    _form: '\Drupal\guest_book\Form\GuestBookForm'
+    _title: 'Guest Book Form'
+  requirements:
+    _permission: 'access content'

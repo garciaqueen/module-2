@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for Guest Book module.
+ */
+
+function guest_book_schema() {
+    $schema['guest_book'] = [
+        'description' => 'Stores guest book data',
+        'fields' => [
+            'id' => [
+                'type' => 'serial', 
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ],
+            'name' => [
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+            ],
+            'email' => [
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+            ],
+            'phone_number' => [
+                'type' => 'varchar',
+                'length' => 10,
+                'not null' => TRUE,
+            ],
+            'created' => [
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ],
+        ],
+        'primary key' => ['id'],
+    ];
+
+    return $schema;
+}
+
+/**
+ * Implements hook_uninstall
+ */
+function guest_book_uninstall() {
+    if (\Drupal::database()->schema()->tableExists('guest_book'))
+        \Drupal::database()->schema()->dropTable('guest_book');
+}

@@ -2,3 +2,16 @@
  * @file
  * Subtheme specific CSS.
  */
+
+
+ .messages--warning {
+    color: orange;
+ }
+
+ .messages--error {
+    color: red;
+ }
+
+ .messages--success {
+    color: green;
+ }
