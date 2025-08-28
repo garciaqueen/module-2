@@ -30,8 +30,8 @@ class GuestBookController extends ControllerBase {
           'email' => $review->email,
           'comment' => $review->comment,
           'avatar' => !empty($review->avatar)
-          ? $base_url . '/sites/default/files/guestbook/avatars/' . $review->avatar
-          : NULL,
+            ? $base_url . '/sites/default/files/guestbook/avatars/' . $review->avatar
+            : 'https://www.svgrepo.com/show/452030/avatar-default.svg',
           'image' => !empty($review->image)
           ? $base_url . '/sites/default/files/guestbook/images/' . $review->image
           : NULL,
