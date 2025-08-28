@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * @file
+ * Contains guest_book.module.
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function guest_book_theme($existing, $type, $theme, $path) {
+  return [
+    'guest_book_page' => [
+      'variables' => [
+        'form' => NULL,
+        'reviews' => [],
+      ],
+    ],
+  ];
+}

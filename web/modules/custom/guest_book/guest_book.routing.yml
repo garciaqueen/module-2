@@ -1,7 +1,16 @@
 guest_book.form:
-  path: '/guest-book'
+  path: '/guest-book-form'
   defaults:
     _form: '\Drupal\guest_book\Form\GuestBookForm'
     _title: 'Guest Book Form'
+  requirements:
+    _permission: 'access content'
+
+
+guest_book.page:
+  path: '/guest-book'
+  defaults:
+    _controller: '\Drupal\guest_book\Controller\GuestBookController::page'
+    _title: 'Guest Guest Book'
   requirements:
     _permission: 'access content'

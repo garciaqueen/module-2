@@ -1,0 +1,63 @@
+<div class="guest-book-page-content">
+
+  {# Form section #}
+  {% if form %}
+    <div class="guest-book-form-section mb-4">
+      <h3>{{ 'Add Your Review'|t }}</h3>
+      {{ form }}
+    </div>
+    <hr>
+  {% endif %}
+
+  {# Reviews list section #}
+  <div class="reviews container">
+    {% if reviews is empty %}
+      <p>No reviews yet.</p>
+    {% else %}
+      <div class="row g-4">
+        {% for review in reviews %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="review-card p-3 border rounded shadow-sm h-100 d-flex flex-column">
+
+              {# Header: avatar, name, email, date #}
+              <div class="d-flex align-items-center mb-2">
+
+                <div class="avatar-wrapper me-2 rounded-circle">
+                  {% if review.avatar %}
+                    <img src="{{ review.avatar }}" alt="Avatar" class="avatar-img rounded-circle">
+                  {% else %}
+                    <div class="avatar-placeholder rounded-circle bg-secondary"></div>
+                  {% endif %}
+                </div>
+
+                <div class="flex-grow-1 me-2" style="min-width:0;">
+                  <div class="fw-bold text-truncate" title="{{ review.name }}">{{ review.name }}</div>
+                  <div class="text-muted small text-truncate" title="{{ review.email }}">{{ review.email }}</div>
+                </div>
+
+                <div class="text-muted small date-text text-end" style="text-align:right; line-height: 1.2;">
+                  <span style="display:inline-block;">{{ review.created|date("m/d/Y") }}</span>
+                  <span style="display:inline-block;">{{ review.created|date("H:i:s") }}</span>
+                </div>
+
+              </div>
+
+              {# Text content #}
+              <div class="review-comment mb-2" style="overflow-wrap: break-word;">
+                {{ review.comment ?? '' }}
+              </div>
+
+              {# Image if exists #}
+              {% if review.image %}
+                <img src="{{ review.image }}" alt="Review image" class="review-image rounded"
+                     style="max-height:150px; max-width:100%; object-fit:contain; display:block; margin:auto;">
+              {% endif %}
+
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+</div>
