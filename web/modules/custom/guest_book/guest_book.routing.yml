@@ -14,3 +14,28 @@ guest_book.page:
     _title: 'Guest Guest Book'
   requirements:
     _permission: 'access content'
+
+
+guest_book.edit-review:
+  path: '/guest-book/{id}/edit'
+  defaults:
+    _form: '\Drupal\guest-book\Form\GuestBookForm'
+    _title: 'Edit Review'
+  requirements:
+    _role: 'administrator'
+
+
+guest_book.confirm_delete:
+  path: '/guest-book/{id}/confirm-delete'
+  defaults:
+    _controller: '\Drupal\guest_book\Controller\GuestBookController::confirmDelete'
+    _title: 'Confirm delete'
+  requirements:
+    _role: 'administrator'
+
+guest_book.delete:
+  path: '/guest-book/{id}/delete'
+  defaults:
+    _controller: '\Drupal\guest_book\Controller\GuestBookController::deleteReview'
+  requirements:
+    _role: 'administrator'

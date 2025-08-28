@@ -51,3 +51,11 @@
 .avatar {
   border-radius: 100%;
 } 
+
+.buttons {
+  margin-top: 10px;
+}
+
+.right .left {
+  margin: 5px;
+}

@@ -52,7 +52,17 @@
                 <img src="{{ review.image }}" alt="Review image" class="review-image rounded"
                      style="max-height:150px; max-width:100%; object-fit:contain; display:block; margin:auto;">
               {% endif %}
-
+              {% if 'administrator' in user.roles %}
+                <div class=" buttons d-flex gap-2">
+                  <a href="/guest-book/{{ review.id }}/edit" class="btn btn-sm btn-primary left">Edit</a>
+                  <a href="/guest-book/{{ review.id }}/confirm-delete"
+                    class="btn btn-sm btn-danger use-ajax right"
+                    data-dialog-type="modal"
+                    data-dialog-options='{"width":300}'>
+                    Delete
+                  </a>
+                </div>
+              {% endif %}
             </div>
           </div>
         {% endfor %}
