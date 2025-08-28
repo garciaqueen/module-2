@@ -29,6 +29,20 @@ function guest_book_schema() {
                 'length' => 10,
                 'not null' => TRUE,
             ],
+            'comment' => [
+                'type' => 'text',
+                'not null' => TRUE,
+            ],
+            'avatar' => [
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => FALSE,
+            ],
+            'image' => [
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => FALSE,
+            ],
             'created' => [
                 'type' => 'int',
                 'unsigned' => TRUE,
@@ -41,10 +55,12 @@ function guest_book_schema() {
     return $schema;
 }
 
+
 /**
  * Implements hook_uninstall
  */
 function guest_book_uninstall() {
-    if (\Drupal::database()->schema()->tableExists('guest_book'))
+    if (\Drupal::database()->schema()->tableExists('guest_book')) {
         \Drupal::database()->schema()->dropTable('guest_book');
+    }
 }

@@ -1,0 +1,10 @@
+guest_book:
+  version: 1.x
+  css:
+    theme:
+      custom/style.css: {}
+  js:
+    js/guest_book.js: {}
+  dependencies:    
+    - core/jquery
+    - core/drupal.dialog.ajax
