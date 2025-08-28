@@ -18,6 +18,7 @@ class GuestBookController extends ControllerBase {
   public function reviewList() {
     $reviews = \Drupal::database()->select('guest_book', 'g')
       ->fields('g', ['id', 'name', 'email', 'comment', 'avatar', 'image', 'created'])
+      ->orderBy('created', 'DESC')
       ->execute()
       ->fetchAll();
 
