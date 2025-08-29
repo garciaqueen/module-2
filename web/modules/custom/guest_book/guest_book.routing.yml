@@ -19,7 +19,7 @@ guest_book.page:
 guest_book.edit-review:
   path: '/guest-book/{id}/edit'
   defaults:
-    _form: '\Drupal\guest-book\Form\GuestBookForm'
+    _form: '\Drupal\guest_book\Form\GuestBookForm'
     _title: 'Edit Review'
   requirements:
     _role: 'administrator'

@@ -63,3 +63,11 @@
 .guest-book-page-content {
   margin-bottom: 30px;
 }
+
+.guest-book-form {
+  margin-bottom: 30px;
+}
+
+a {
+  text-decoration: none;
+}

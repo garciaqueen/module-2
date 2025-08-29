@@ -8,8 +8,13 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\HtmlCommand;
 use Drupal\file\Entity\File;
 use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\Ajax\RedirectCommand;
+use Drupal\Core\Ajax\InvokeCommand;
+use Drupal\Core\Messenger\MessengerInterface;
 
-
+/**
+ * Form class for Guest Book entries.
+ */
 class GuestBookForm extends FormBase {
 
   /**
@@ -20,12 +25,67 @@ class GuestBookForm extends FormBase {
   }
 
   /**
-   * {@inheritdoc}
+   * Builds the guest book submission form.
+   *
+   * Includes fields for name, email, phone number, comment, avatar, and image.
+   *
+   * @param array $form
+   *   The form structure.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current form state.
+   *
+   * @return array
+   *   The renderable form array.
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
 
     $form['#prefix'] = '<div id="mashka-form-wrapper">';
     $form['#suffix'] = '</div>';
+    $form['status_messages'] = [
+      '#type' => 'container',
+      '#attributes' => ['id' => 'guest-book-status-messages'],
+    ];
+
+    // Id from the URL
+    $id = \Drupal::routeMatch()->getParameter('id');
+    $review = NULL;
+    if ($id) {
+        $review = \Drupal::database()->select('guest_book', 'g')
+          ->fields('g', ['id', 'name', 'email', 'phone_number', 'comment', 'avatar', 'image', 'created'])
+          ->condition('id', $id)
+          ->execute()
+          ->fetchObject();
+    }
+
+    $avatar_fid = NULL;
+    $image_fid = NULL;
+
+    if (!empty($review->avatar)) {
+      $files = \Drupal::entityTypeManager()->getStorage('file')->loadByProperties([
+        'filename' => $review->avatar,
+      ]);
+      $file = reset($files);
+      if ($file) {
+        $avatar_fid = $file->id();
+      }
+    }
+
+    if (!empty($review->image)) {
+      $files = \Drupal::entityTypeManager()->getStorage('file')->loadByProperties([
+        'filename' => $review->image,
+      ]);
+      $file = reset($files);
+      if ($file) {
+        $image_fid = $file->id();
+      }
+    }
+
+    $form['id'] = [
+      '#type' => 'hidden',
+      '#value' => $id ?: '',
+    ];
+
+    // Name field.
     $form['name_message'] = [
       '#type' => 'container',
       '#attributes' => ['id' => 'name-message'],
@@ -40,7 +100,11 @@ class GuestBookForm extends FormBase {
         'event' => 'blur',
         'wrapper' => 'name-message',
       ],
+      '#default_value' => $review ? $review->name : '',
+
     ];
+
+    // Email field.
     $form['email_message'] = [
       '#type' => 'container',
       '#attributes' => ['id' => 'email-message'],
@@ -55,7 +119,11 @@ class GuestBookForm extends FormBase {
         'event' => 'blur',
         'wrapper' => 'email-message',
       ],
+      '#default_value' => $review ? $review->email : '',
+
     ];
+
+    // Phone number field.
     $form['phone_message'] = [
       '#type' => 'container',
       '#attributes' => ['id' => 'phone-message'],
@@ -70,14 +138,18 @@ class GuestBookForm extends FormBase {
         'event' => 'blur',
         'wrapper' => 'phone-message',
       ],
+      '#default_value' => $review ? $review->phone_number : '',
     ];
 
+    // Comment field.
     $form['comment'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Your Comment'),
       '#required' => TRUE,
+      '#default_value' => $review ? $review->comment : '',
     ];
 
+    // Avatar upload field.
     $form['avatar_message'] = [
       '#type' => 'container',
       '#attributes' => ['id' => 'avatar-message'],
@@ -90,25 +162,22 @@ class GuestBookForm extends FormBase {
       '#required' => FALSE,
       '#multiple' => FALSE,
       '#upload_validators' => [
-        'FileExtension' => [
-          'extensions' => 'jpg jpeg png',
-        ],
-        'FileSizeLimit' => [
-          'fileLimit' => 2097152,
-        ],
+        'FileExtension' => ['extensions' => 'jpg jpeg png'],
+        'FileSizeLimit' => ['fileLimit' => 2097152],
       ],
       '#ajax' => [
         'callback' => '::validateAvatar',
         'event' => 'change',
         'wrapper' => 'avatar-message',
       ],
+      '#default_value' => $avatar_fid ? [$avatar_fid] : NULL,
     ];
 
-    $form['image'] = [
+    // Image upload field.
+    $form['image_message'] = [
       '#type' => 'container',
       '#attributes' => ['id' => 'image-message'],
     ];
-
     $form['image'] = [
       '#type' => 'managed_file',
       '#title' => $this->t('Image'),
@@ -117,30 +186,44 @@ class GuestBookForm extends FormBase {
       '#required' => FALSE,
       '#multiple' => FALSE,
       '#upload_validators' => [
-        'FileExtension' => [
-          'extensions' => 'jpg jpeg png',
-        ],
-        'FileSizeLimit' => [
-          'fileLimit' => 5242880,
-        ],
+        'FileExtension' => ['extensions' => 'jpg jpeg png'],
+        'FileSizeLimit' => ['fileLimit' => 5242880],
       ],
       '#ajax' => [
         'callback' => '::validateImage',
         'event' => 'change',
         'wrapper' => 'image-message',
       ],
+      '#default_value' => $image_fid ? [$image_fid] : NULL,
     ];
 
+    $form['created'] = [
+      '#type' => 'hidden',
+      '#value' => $review ? $review->created : '',
+    ];
+
+    // Submit button.
     $form['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Submit'),
     ];
 
+    if ($id) {
+      $form['return'] = [
+        '#type' => 'link',
+        '#title' => $this->t('Back to list'),
+        '#url' => \Drupal\Core\Url::fromRoute('guest_book.page'),
+        '#attributes' => [
+          'class' => ['btn', 'btn-primary'],
+        ],
+      ];
+    }
+
     return $form;
   }
 
   /**
-   * Simple AJAX name validation.
+   * AJAX callback for validating the name field.
    */
   public function validateName(array &$form, FormStateInterface $form_state) {
     $response = new AjaxResponse();
@@ -148,151 +231,155 @@ class GuestBookForm extends FormBase {
 
     if (!$name) {
       $response->addCommand(new HtmlCommand('#name-message', '<div class="messages messages--warning">Enter your name!</div>'));
-    } elseif (strlen($name) < 2) {
+    }
+    elseif (strlen($name) < 2) {
       $response->addCommand(new HtmlCommand('#name-message', '<div class="messages messages--error">Too short!</div>'));
-    } elseif (strlen($name) > 100) {
+    }
+    elseif (strlen($name) > 100) {
       $response->addCommand(new HtmlCommand('#name-message', '<div class="messages messages--error">Too long!</div>'));
-    } else {
+    }
+    else {
       $response->addCommand(new HtmlCommand('#name-message', '<div class="messages messages--success">Correct!</div>'));
     }
+
     return $response;
   }
 
+  /**
+   * AJAX callback for validating the email field.
+   */
   public function validateEmail(array &$form, FormStateInterface $form_state) {
     $response = new AjaxResponse();
     $email = trim($form_state->getValue('email'));
 
     if (!$email) {
       $response->addCommand(new HtmlCommand('#email-message', '<div class="messages messages--warning">Enter your email!</div>'));
-    } elseif (!preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email)) {
+    }
+    elseif (!preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email)) {
       $response->addCommand(new HtmlCommand('#email-message', '<div class="messages messages--error">Invalid email format!</div>'));
-    } else {
+    }
+    else {
       $response->addCommand(new HtmlCommand('#email-message', '<div class="messages messages--success">Correct!</div>'));
     }
+
     return $response;
   }
 
+  /**
+   * AJAX callback for validating the phone number field.
+   */
   public function validateNumber(array &$form, FormStateInterface $form_state) {
     $response = new AjaxResponse();
     $phone_number = trim($form_state->getValue('phone_number'));
 
     if (!$phone_number) {
       $response->addCommand(new HtmlCommand('#phone-message', '<div class="messages messages--warning">Enter your phone number!</div>'));
-    } elseif (strlen($phone_number) != 10) {
+    }
+    elseif (strlen($phone_number) != 10) {
       $response->addCommand(new HtmlCommand('#phone-message', '<div class="messages messages--error">Phone number must be 10 digits.</div>'));
-    } else {
+    }
+    else {
       $response->addCommand(new HtmlCommand('#phone-message', '<div class="messages messages--success">Correct!</div>'));
     }
+
     return $response;
   }
 
+  /**
+   * AJAX callback for validating the avatar upload field.
+   */
   public function validateAvatar(array &$form, FormStateInterface $form_state) {
     $response = new AjaxResponse();
-
     $errors = $form_state->getErrors();
+
     if (!empty($errors)) {
-      $error_messages = [];
-      foreach ($errors as $error) {
-        $error_messages[] = $error;
-      }
-      $response->addCommand(new HtmlCommand('#avatar-message', '<div class="messages messages--error">' . implode('<br>', $error_messages) . '</div>'));
+      $response->addCommand(new HtmlCommand('#avatar-message', '<div class="messages messages--error">' . implode('<br>', $errors) . '</div>'));
       return $response;
     }
 
     $fid = $form_state->getValue('avatar')[0] ?? NULL;
-
-    if ($fid) {
-      $file = File::load($fid);
-      if ($file) {
-        $response->addCommand(new HtmlCommand('#avatar-message', '<div class="messages messages--success">✅ Avatar file looks good!</div>'));
-      }
-    } else {
+    if ($fid && ($file = File::load($fid))) {
+      $response->addCommand(new HtmlCommand('#avatar-message', '<div class="messages messages--success">✅ Avatar file looks good!</div>'));
+    }
+    else {
       $response->addCommand(new HtmlCommand('#avatar-message', ''));
     }
 
     return $response;
   }
-    public function validateImage(array &$form, FormStateInterface $form_state) {
 
-      $response = new AjaxResponse();
+  /**
+   * AJAX callback for validating the image upload field.
+   */
+  public function validateImage(array &$form, FormStateInterface $form_state) {
+    $response = new AjaxResponse();
+    $errors = $form_state->getErrors();
 
-      $errors = $form_state->getErrors();
-      if (!empty($errors)) {
-        $error_messages = [];
-        foreach ($errors as $error) {
-          $error_messages[] = $error;
-        }
-        $response->addCommand(new HtmlCommand('#image-message', '<div class="messages messages--error">' . implode('<br>', $error_messages) . '</div>'));
-        return $response;
-      }
-
-      $fid = $form_state->getValue('image')[0] ?? NULL;
-
-      if ($fid) {
-        $file = File::load($fid);
-        if ($file) {
-          $response->addCommand(new HtmlCommand('#image-message', '<div class="messages messages--success">✅ Image file looks good!</div>'));
-        }
-      } else {
-        $response->addCommand(new HtmlCommand('#image-message', ''));
-      }
+    if (!empty($errors)) {
+      $response->addCommand(new HtmlCommand('#image-message', '<div class="messages messages--error">' . implode('<br>', $errors) . '</div>'));
       return $response;
     }
 
+    $fid = $form_state->getValue('image')[0] ?? NULL;
+    if ($fid && ($file = File::load($fid))) {
+      $response->addCommand(new HtmlCommand('#image-message', '<div class="messages messages--success">✅ Image file looks good!</div>'));
+    }
+    else {
+      $response->addCommand(new HtmlCommand('#image-message', ''));
+    }
+
+    return $response;
+  }
+
   /**
    * {@inheritdoc}
+   *
+   * Performs server-side validation for file uploads (avatar and image).
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
     parent::validateForm($form, $form_state);
-    
     $avatar_fid = $form_state->getValue('avatar')[0] ?? NULL;
     $image_fid = $form_state->getValue('image')[0] ?? NULL;
-    
-    if ($avatar_fid) {
-      $file = File::load($avatar_fid);
-      if ($file) {
-        $allowed_extensions = ['jpg', 'jpeg', 'png'];
-        $file_extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
-        
-        if (!in_array($file_extension, $allowed_extensions)) {
-          $form_state->setErrorByName('avatar', $this->t('Only JPG, JPEG, and PNG files are allowed.'));
-        }
-        
-        if ($file->getSize() > 2097152) {
-          $form_state->setErrorByName('avatar', $this->t('File size must be less than 2MB.'));
-        }
-        
-        $allowed_mimes = ['image/jpeg', 'image/jpg', 'image/png'];
-        if (!in_array($file->getMimeType(), $allowed_mimes)) {
-          $form_state->setErrorByName('avatar', $this->t('Invalid file type. Only JPG and PNG images are allowed.'));
-        }
+
+    // Validate avatar file.
+    if ($avatar_fid && ($file = File::load($avatar_fid))) {
+      $allowed_extensions = ['jpg', 'jpeg', 'png'];
+      $file_extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
+
+      if (!in_array($file_extension, $allowed_extensions)) {
+        $form_state->setErrorByName('avatar', $this->t('Only JPG, JPEG, and PNG files are allowed.'));
+      }
+      if ($file->getSize() > 2097152) {
+        $form_state->setErrorByName('avatar', $this->t('File size must be less than 2MB.'));
+      }
+      $allowed_mimes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!in_array($file->getMimeType(), $allowed_mimes)) {
+        $form_state->setErrorByName('avatar', $this->t('Invalid file type. Only JPG and PNG images are allowed.'));
       }
     }
 
-    if ($image_fid) {
-      $file = File::load($image_fid);
-      if ($file) {
-        $allowed_extensions = ['jpg', 'jpeg', 'png'];
-        $file_extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
-        
-        if (!in_array($file_extension, $allowed_extensions)) {
-          $form_state->setErrorByName('image', $this->t('Only JPG, JPEG, and PNG files are allowed.'));
-        }
-        
-        if ($file->getSize() > 2097152) {
-          $form_state->setErrorByName('image', $this->t('File size must be less than 5MB.'));
-        }
-        
-        $allowed_mimes = ['image/jpeg', 'image/jpg', 'image/png'];
-        if (!in_array($file->getMimeType(), $allowed_mimes)) {
-          $form_state->setErrorByName('image', $this->t('Invalid file type. Only JPG and PNG images are allowed.'));
-        }
+    // Validate image file.
+    if ($image_fid && ($file = File::load($image_fid))) {
+      $allowed_extensions = ['jpg', 'jpeg', 'png'];
+      $file_extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
+
+      if (!in_array($file_extension, $allowed_extensions)) {
+        $form_state->setErrorByName('image', $this->t('Only JPG, JPEG, and PNG files are allowed.'));
+      }
+      if ($file->getSize() > 5242880) {
+        $form_state->setErrorByName('image', $this->t('File size must be less than 5MB.'));
+      }
+      $allowed_mimes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!in_array($file->getMimeType(), $allowed_mimes)) {
+        $form_state->setErrorByName('image', $this->t('Invalid file type. Only JPG and PNG images are allowed.'));
       }
     }
   }
 
   /**
    * {@inheritdoc}
+   *
+   * Submits the form, saves uploaded files, and stores the review in the database.
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $avatar_fid = $form_state->getValue('avatar')[0] ?? NULL;
@@ -301,63 +388,70 @@ class GuestBookForm extends FormBase {
     $new_filename = NULL;
     $new_filename_img = NULL;
 
+    // Process avatar upload.
+    if ($avatar_fid && ($file = File::load($avatar_fid))) {
+      $extension = pathinfo($file->getFilename(), PATHINFO_EXTENSION);
+      $uid = \Drupal::currentUser()->id();
+      $new_filename = $uid . '-' . \Drupal::time()->getRequestTime() . '.' . $extension;
 
-    if ($avatar_fid) {
-      $file = File::load($avatar_fid);
+      $destination = 'public://guestbook/avatars/' . $new_filename;
+      \Drupal::service('file_system')->move($file->getFileUri(), $destination, FileSystemInterface::EXISTS_REPLACE);
 
-      if ($file) {
-        $extension = pathinfo($file->getFilename(), PATHINFO_EXTENSION);
-
-        $uid = \Drupal::currentUser()->id();
-
-        $new_filename = $uid . '-' . \Drupal::time()->getRequestTime() . '.' . $extension;
-
-        $destination = 'public://guestbook/avatars/' . $new_filename;
-        \Drupal::service('file_system')->move($file->getFileUri(), $destination, FileSystemInterface::EXISTS_REPLACE);
-
-        $file->setFilename($new_filename);
-        $file->setFileUri($destination);
-
-        $file->setPermanent();
-        $file->save();
-      }
+      $file->setFilename($new_filename);
+      $file->setFileUri($destination);
+      $file->setPermanent();
+      $file->save();
     }
 
-    if ($image_fid) {
-      $file = File::load($image_fid);
+    // Process image upload.
+    if ($image_fid && ($file = File::load($image_fid))) {
+      $extension = pathinfo($file->getFilename(), PATHINFO_EXTENSION);
+      $uid = \Drupal::currentUser()->id();
+      $new_filename_img = $uid . '-' . \Drupal::time()->getRequestTime() . '.' . $extension;
 
-      if ($file) {
-        $extension = pathinfo($file->getFilename(), PATHINFO_EXTENSION);
+      $destination = 'public://guestbook/images/' . $new_filename_img;
+      \Drupal::service('file_system')->move($file->getFileUri(), $destination, FileSystemInterface::EXISTS_REPLACE);
 
-        $uid = \Drupal::currentUser()->id();
-
-        $new_filename_img = $uid . '-' . \Drupal::time()->getRequestTime() . '.' . $extension;
-
-        $destination = 'public://guestbook/images/' . $new_filename_img;
-        \Drupal::service('file_system')->move($file->getFileUri(), $destination, FileSystemInterface::EXISTS_REPLACE);
-
-        $file->setFilename($new_filename_img);
-        $file->setFileUri($destination);
-
-        $file->setPermanent();
-        $file->save();
-      }
+      $file->setFilename($new_filename_img);
+      $file->setFileUri($destination);
+      $file->setPermanent();
+      $file->save();
     }
 
-    \Drupal::database()->insert('guest_book')
-      ->fields([
-        'name' => $form_state->getValue('name'),
-        'email' => $form_state->getValue('email'),
-        'phone_number' => $form_state->getValue('phone_number'),
-        'comment' => $form_state->getValue('comment'),
-        'avatar' => $new_filename,
-        'image' => $new_filename_img,
-        'created' => \Drupal::time()->getRequestTime(),
-      ])
-      ->execute();
+    $id = \Drupal::routeMatch()->getParameter('id');
 
-    $this->messenger()->addStatus($this->t('Comment added successfully!'));
+    // Save entry to database.
+    if ($id) {
+      \Drupal::database()->update('guest_book')
+        ->fields([
+          'name' => $form_state->getValue('name'),
+          'email' => $form_state->getValue('email'),
+          'phone_number' => $form_state->getValue('phone_number'),
+          'comment' => $form_state->getValue('comment'),
+          'avatar' => $new_filename,
+          'image' => $new_filename_img,
+          'created' => $form_state->getValue('created'),
+        ])
+        ->condition('id', $id)
+        ->execute();
+
+      // \Drupal::messenger()->addMessage($this->t('Відгук змінено.'));
+    } else {
+      \Drupal::database()->insert('guest_book')
+        ->fields([
+          'name' => $form_state->getValue('name'),
+          'email' => $form_state->getValue('email'),
+          'phone_number' => $form_state->getValue('phone_number'),
+          'comment' => $form_state->getValue('comment'),
+          'avatar' => $new_filename,
+          'image' => $new_filename_img,
+          'created' => \Drupal::time()->getRequestTime(),
+        ])
+        ->execute();
+
+      // \Drupal::messenger()->addMessage($this->t('Відгук додано.'));
+    }
+    $form_state->setRedirect('guest_book.page');
   }
-
 
 }

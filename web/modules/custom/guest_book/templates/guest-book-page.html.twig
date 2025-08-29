@@ -21,7 +21,7 @@
               <div class="user-info d-flex align-items-center mb-2">
                 <div class="avatar-wrapper me-2 rounded-circle">
                   {% if review.avatar %}
-                    <img src="{{ review.avatar }}" alt="Avatar" class="avatar-img rounded-circle">
+                    <a href="{{ review.avatar }}"><img src="{{ review.avatar }}" alt="Avatar" class="avatar-img rounded-circle"></a>
                   {% else %}
                     <div class="avatar-placeholder rounded-circle bg-secondary"></div>
                   {% endif %}
@@ -39,12 +39,15 @@
 
               {# Review image if exists #}
               {% if review.image %}
-                <img src="{{ review.image }}" alt="Review image" class="review-image rounded mb-2" style="max-height:150px; max-width:100%; object-fit:contain;">
+                <a href="{{ review.image }}"><img src="{{ review.image }}" alt="Review image" class="review-image rounded mb-2" style="max-height:150px; max-width:100%; object-fit:contain;"></a>
               {% endif %}
 
               {# 3. Contact info #}
               <div class="contact-info text-muted small">
-                {{ review.email }}
+                <span> Contact info: 
+                  <span><a href="mailto:{{ review.email }}">{{ review.email }}</a></span><br>
+                  <span><a href="tel:+38 {{ review.phone_number }}">+38 {{ review.phone_number }}</span>
+                </span>
               </div>
 
               {# Admin buttons #}
